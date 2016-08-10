@@ -82,6 +82,18 @@
                     android:layout_height="wrap_content"
                     android:text="sync" />
 
+                <Button
+                    android:id="@+id/btn_play_call"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="call" />
+
+                <Button
+                    android:id="@+id/btn_play_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="text" />
+
             </org.houxg.flexlayout.FlexLayout>
 
             <View

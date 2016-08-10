@@ -24,16 +24,17 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
-import com.misfit.misfitsdk.bluetooth.shine.ShineConfiguration;
-import com.misfit.misfitsdk.bluetooth.shine.controller.ConfigurationSession;
 import com.misfit.misfitsdk.callback.MFDataOutPutCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
-import com.misfit.misfitsdk.callback.OnOtaListener;
+import com.misfit.misfitsdk.callback.MFOtaCallback;
 import com.misfit.misfitsdk.callback.OnTagInStateListener;
 import com.misfit.misfitsdk.callback.OnTagInUserInputListener;
 import com.misfit.misfitsdk.device.MFDevice;
+import com.misfit.misfitsdk.device.MFRayDevice;
+import com.misfit.misfitsdk.device.MFShine2Device;
 import com.misfit.misfitsdk.enums.MFDeviceType;
 import com.misfit.misfitsdk.model.MFActivitySessionGroup;
+import com.misfit.misfitsdk.model.MFDeviceConfiguration;
 import com.misfit.misfitsdk.model.MFGraphItem;
 import com.misfit.misfitsdk.model.MFSleepSession;
 import com.misfit.misfitsdk.model.MFSyncParams;
@@ -47,7 +48,7 @@ import butterknife.OnClick;
 
 
 public class SyncActivity extends AppCompatActivity
-        implements OnOtaListener, MFDataOutPutCallback, MFOperationResultCallback {
+        implements MFOtaCallback, MFDataOutPutCallback, MFOperationResultCallback {
 
     private final static String TAG = "SyncActivity";
 
@@ -186,6 +187,24 @@ public class SyncActivity extends AppCompatActivity
                 .show();
     }
 
+    @OnClick(R.id.btn_play_call)
+    void playCall() {
+        if (mMFDevice instanceof MFRayDevice) {
+            ((MFRayDevice) mMFDevice).playCallNotification(this);
+        } else if (mMFDevice instanceof MFShine2Device) {
+            ((MFShine2Device) mMFDevice).playCallNotification(this);
+        }
+    }
+
+    @OnClick(R.id.btn_play_text)
+    void playText() {
+        if (mMFDevice instanceof MFRayDevice) {
+            ((MFRayDevice) mMFDevice).playTextNotification(this);
+        } else if (mMFDevice instanceof MFShine2Device) {
+            ((MFShine2Device) mMFDevice).playTextNotification(this);
+        }
+    }
+
     @OnClick(R.id.btn_sync)
     void sync() {
         MFSyncParams MFSyncParams = createSyncParams();
@@ -234,8 +253,18 @@ public class SyncActivity extends AppCompatActivity
 
     /* interface methods of OnOtaListener */
     @Override
-    public void onEntireOtaCompleted() {
-        Log.d(TAG, "entire OTA Completed");
+    public void onEnter() {
+        Log.i(TAG, "ota enter");
+    }
+
+    @Override
+    public void onCompleted() {
+        Log.i(TAG, "ota completed");
+    }
+
+    @Override
+    public void onProgress(float v) {
+        Log.i(TAG, "ota progress=" + v);
     }
 
     @Override
@@ -263,11 +292,11 @@ public class SyncActivity extends AppCompatActivity
     }
 
     @Override
-    public void onGetShineConfigurationCompleted(final ConfigurationSession configSession) {
+    public void onGetDeviceConfiguration(final MFDeviceConfiguration mfDeviceConfiguration) {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, mGson.toJson(configSession));
+                Log.d(TAG, mGson.toJson(mfDeviceConfiguration));
             }
         });
     }
@@ -278,7 +307,7 @@ public class SyncActivity extends AppCompatActivity
                 mSwitchActivate.isChecked(),
                 mSwitchShouldForceOta.isChecked());
         MFSyncParams.tagInStateListener = mTagInStateListener;  //for flash
-        MFSyncParams.deviceConfiguration = new ShineConfiguration();
+        MFSyncParams.deviceConfiguration = DataSource.getConfig();
         MFSyncParams.lastGraphItem = DataSource.getFakeGraphItem();
 
         return MFSyncParams;

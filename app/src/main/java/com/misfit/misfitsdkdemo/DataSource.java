@@ -2,6 +2,7 @@ package com.misfit.misfitsdkdemo;
 
 
 import com.misfit.misfitsdk.enums.MFGender;
+import com.misfit.misfitsdk.model.MFDeviceConfiguration;
 import com.misfit.misfitsdk.model.MFGraphItem;
 import com.misfit.misfitsdk.model.MFProfile;
 
@@ -38,5 +39,15 @@ public class DataSource {
         calendar.add(Calendar.MINUTE, -15);
         long startTime = calendar.getTimeInMillis() / 1000;
         return new MFGraphItem(startTime, endTime, 0);
+    }
+
+    public static MFDeviceConfiguration getConfig() {
+        return MFDeviceConfiguration.createSetConfiguration(
+                MFDeviceConfiguration.ClockState.CLOCK_STATE_DEFAULT,
+                MFDeviceConfiguration.TripleTapState.TRIPLE_TAP_STATE_DEFAULT,
+                MFDeviceConfiguration.ActivityTaggingState.ACTIVITY_TAGGING_DEFAULT,
+                120,
+                2000
+        );
     }
 }
