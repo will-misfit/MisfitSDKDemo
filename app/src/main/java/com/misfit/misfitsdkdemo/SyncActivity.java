@@ -7,12 +7,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,6 +39,7 @@ import com.misfit.misfitsdk.model.MFSleepSession;
 import com.misfit.misfitsdk.model.MFSyncParams;
 
 import java.util.List;
+import java.util.Locale;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -107,8 +111,6 @@ public class SyncActivity extends AppCompatActivity
                 BuildConfig.APPLICATION_ID,
                 BuildConfig.VERSION_NAME,
                 "5c203ef8-d62a-11e5-ab30-625662870761");
-//        OkHttpClient client = new OkHttpClient.Builder().build();
-//        Log.i(TAG, client.toString());
     }
 
     @Override
@@ -161,6 +163,27 @@ public class SyncActivity extends AppCompatActivity
                         startActivityForResult(intent, REQ_SCAN);
                     }
                 }).show();
+    }
+
+    @OnClick(R.id.btn_by_serial)
+    void getBySerialNumber() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null, false);
+        final EditText editView = (EditText) view.findViewById(R.id.edit);
+        new AlertDialog.Builder(this)
+                .setView(view)
+                .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        String serial = editView.getText().toString().toUpperCase(Locale.ENGLISH);
+                        if (TextUtils.isEmpty(serial)) {
+                            Toast.makeText(SyncActivity.this, "Serial number can not be empty", Toast.LENGTH_SHORT).show();
+                        } else {
+                            updateDeviceInfo(serial);
+                            setSyncPanelEnabled(true);
+                        }
+                    }
+                })
+                .show();
     }
 
     @OnClick(R.id.btn_sync)
