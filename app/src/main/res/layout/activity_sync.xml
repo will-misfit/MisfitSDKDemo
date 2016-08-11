@@ -77,6 +77,12 @@
                     android:text="animation" />
 
                 <Button
+                    android:id="@+id/btn_stop_animation"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="stop animation" />
+
+                <Button
                     android:id="@+id/btn_sync"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -93,6 +99,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="text" />
+
+                <Button
+                    android:id="@+id/btn_get_config"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Config" />
 
             </org.houxg.flexlayout.FlexLayout>
 

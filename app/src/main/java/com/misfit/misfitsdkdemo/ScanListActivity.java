@@ -13,7 +13,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.misfit.misfitsdk.MFAdapter;
-import com.misfit.misfitsdk.callback.OnScanListener;
+import com.misfit.misfitsdk.callback.MFScanCallback;
 import com.misfit.misfitsdk.device.MFDevice;
 import com.misfit.misfitsdk.enums.MFDefine;
 import com.misfit.misfitsdk.enums.MFDeviceType;
@@ -25,7 +25,7 @@ import butterknife.ButterKnife;
 import butterknife.OnItemClick;
 
 
-public class ScanListActivity extends AppCompatActivity implements OnScanListener {
+public class ScanListActivity extends AppCompatActivity implements MFScanCallback {
 
     private final static String TAG = "ScanListActivity";
     private final static String EXT_DEVICE_TYPE = "device_type";
@@ -49,7 +49,6 @@ public class ScanListActivity extends AppCompatActivity implements OnScanListene
         int deviceTpe = getIntent().getIntExtra(EXT_DEVICE_TYPE, MFDeviceType.ALL);
         mAdapter = new DeviceAdapter(this);
         mListDevice.setAdapter(mAdapter);
-
         MFAdapter.getInstance().startScanning(deviceTpe, this);
     }
 

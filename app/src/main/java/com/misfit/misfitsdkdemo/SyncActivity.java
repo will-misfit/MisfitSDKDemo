@@ -24,20 +24,20 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
-import com.misfit.misfitsdk.callback.MFDataOutPutCallback;
+import com.misfit.misfitsdk.callback.MFConfigurationCallback;
+import com.misfit.misfitsdk.callback.MFDataCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
 import com.misfit.misfitsdk.callback.MFOtaCallback;
-import com.misfit.misfitsdk.callback.OnTagInStateListener;
-import com.misfit.misfitsdk.callback.OnTagInUserInputListener;
+import com.misfit.misfitsdk.callback.MFTagInStateCallback;
+import com.misfit.misfitsdk.callback.MFTagInUserInputCallback;
 import com.misfit.misfitsdk.device.MFDevice;
-import com.misfit.misfitsdk.device.MFRayDevice;
-import com.misfit.misfitsdk.device.MFShine2Device;
 import com.misfit.misfitsdk.enums.MFDeviceType;
 import com.misfit.misfitsdk.model.MFActivitySessionGroup;
 import com.misfit.misfitsdk.model.MFDeviceConfiguration;
 import com.misfit.misfitsdk.model.MFGraphItem;
 import com.misfit.misfitsdk.model.MFSleepSession;
 import com.misfit.misfitsdk.model.MFSyncParams;
+import com.misfit.misfitsdk.model.SupportedFeature;
 
 import java.util.List;
 import java.util.Locale;
@@ -47,15 +47,11 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 
-public class SyncActivity extends AppCompatActivity
-        implements MFOtaCallback, MFDataOutPutCallback, MFOperationResultCallback {
+public class SyncActivity extends AppCompatActivity {
 
     private final static String TAG = "SyncActivity";
 
     private final static int REQ_SCAN = 1;
-    private final static int REQ_ALARM_SETTING = 2;
-    private final static int REQ_INACTIVITY_NUDGE_SETTING = 3;
-    private final static int REQ_NOTIFICATION_SETTING = 4;
 
     @Bind(R.id.text_serial_number)
     TextView mTextSerialNumber;
@@ -70,7 +66,10 @@ public class SyncActivity extends AppCompatActivity
     @Bind(R.id.switch_tagging_response)
     Switch mSwitchTaggingResponse;
     @Bind({R.id.btn_sync,
-            R.id.btn_stop,
+            R.id.btn_get_config,
+            R.id.btn_play_call,
+            R.id.btn_play_text,
+            R.id.btn_stop_animation,
             R.id.switch_activate,
             R.id.switch_tagging_response,
             R.id.switch_should_force_ota})
@@ -91,10 +90,11 @@ public class SyncActivity extends AppCompatActivity
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Gson mGson;
     private MFDevice mMFDevice;
+    private long mTodayPoint;
 
-    private OnTagInStateListener mTagInStateListener = new OnTagInStateListener() {
+    private MFTagInStateCallback mTagInStateListener = new MFTagInStateCallback() {
         @Override
-        public void onDeviceTaggingIn(int deviceType, OnTagInUserInputListener inputCallback) {
+        public void onDeviceTaggingIn(int deviceType, MFTagInUserInputCallback inputCallback) {
             inputCallback.onUserInputForTaggingIn(mSwitchTaggingResponse.isChecked());
         }
     };
@@ -187,39 +187,107 @@ public class SyncActivity extends AppCompatActivity
                 .show();
     }
 
+    @OnClick(R.id.btn_get_config)
+    void getConfig() {
+        if (mMFDevice != null) {
+            mMFDevice.getConfiguration(new MFConfigurationCallback() {
+                @Override
+                public void onDeviceConfigurationRead(MFDeviceConfiguration mfDeviceConfiguration) {
+                    Log.i(TAG, "device configuration was read");
+                }
+            }, new OperationCallback());
+        }
+    }
+
+    @OnClick(R.id.btn_stop_animation)
+    void stopAnimation() {
+        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.STOP_ANIMATION)) {
+            mMFDevice.stopAnimation(new OperationCallback());
+        }
+    }
+
     @OnClick(R.id.btn_play_call)
     void playCall() {
-        if (mMFDevice instanceof MFRayDevice) {
-            ((MFRayDevice) mMFDevice).playCallNotification(this);
-        } else if (mMFDevice instanceof MFShine2Device) {
-            ((MFShine2Device) mMFDevice).playCallNotification(this);
+        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
+            mMFDevice.playCallNotification(new OperationCallback());
         }
     }
 
     @OnClick(R.id.btn_play_text)
     void playText() {
-        if (mMFDevice instanceof MFRayDevice) {
-            ((MFRayDevice) mMFDevice).playTextNotification(this);
-        } else if (mMFDevice instanceof MFShine2Device) {
-            ((MFShine2Device) mMFDevice).playTextNotification(this);
+        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
+            mMFDevice.playTextNotification(new OperationCallback());
         }
     }
 
     @OnClick(R.id.btn_sync)
     void sync() {
         MFSyncParams MFSyncParams = createSyncParams();
-        mMFDevice.startSync(this, this, this, MFSyncParams);
+        mMFDevice.startSync(MFSyncParams,
+                new OperationCallback(),
+                new MFConfigurationCallback() {
+                    @Override
+                    public void onDeviceConfigurationRead(final MFDeviceConfiguration mfDeviceConfiguration) {
+                        mTodayPoint = mfDeviceConfiguration.getActivityPoint();
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Log.d(TAG, mGson.toJson(mfDeviceConfiguration));
+                            }
+                        });
+                    }
+                }, new MFDataCallback() {
+                    @Override
+                    public int onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
+                        Log.i(TAG, Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
+                        Log.i(TAG, Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
+                        return (int) mTodayPoint;
+                    }
+
+                    @Override
+                    public void onSleepSessionSynced(List<MFSleepSession> MFSleepSessions) {
+                        Log.i(TAG, Printer.getSleepSessionText(MFSleepSessions));
+                    }
+
+                    @Override
+                    public void onGraphItemSynced(List<MFGraphItem> MFGraphItems) {
+                        Log.i(TAG, Printer.getGraphItemText(MFGraphItems));
+                    }
+                }, new MFOtaCallback() {
+                    @Override
+                    public void onEnter() {
+                        Log.i(TAG, "ota enter");
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        Log.i(TAG, "ota completed");
+                    }
+
+                    @Override
+                    public void onProgress(float v) {
+                        Log.i(TAG, "ota progress=" + v);
+                    }
+
+                    @Override
+                    public boolean isForceOta(boolean hasNewFirmware) {
+                        return mSwitchShouldForceOta.isChecked();
+                    }
+                });
         setSyncPanelEnabled(false);
     }
 
     @OnClick(R.id.btn_play_animation)
     void playAnimation() {
-        mMFDevice.playAnimation(this);
+        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.PLAY_ANIMATION)) {
+            mMFDevice.playAnimation(new OperationCallback());
+        }
     }
 
     @OnClick(R.id.btn_stop)
     void stop() {
         mMFDevice.stopOperation();
+        setSyncPanelEnabled(true);
     }
 
     @Override
@@ -252,54 +320,7 @@ public class SyncActivity extends AppCompatActivity
     }
 
     /* interface methods of OnOtaListener */
-    @Override
-    public void onEnter() {
-        Log.i(TAG, "ota enter");
-    }
 
-    @Override
-    public void onCompleted() {
-        Log.i(TAG, "ota completed");
-    }
-
-    @Override
-    public void onProgress(float v) {
-        Log.i(TAG, "ota progress=" + v);
-    }
-
-    @Override
-    public boolean isForceOta(boolean hasNewFirmware) {
-        return mSwitchShouldForceOta.isChecked();
-    }
-
-    /* interface methods of MFDataOutPutCallback */
-
-    @Override
-    public int onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
-        Log.i(TAG, Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
-        Log.i(TAG, Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
-        return 0;
-    }
-
-    @Override
-    public void onSleepSessionSynced(List<MFSleepSession> MFSleepSessions) {
-        Log.i(TAG, Printer.getSleepSessionText(MFSleepSessions));
-    }
-
-    @Override
-    public void onGraphItemSynced(List<MFGraphItem> MFGraphItems) {
-        Log.i(TAG, Printer.getGraphItemText(MFGraphItems));
-    }
-
-    @Override
-    public void onGetDeviceConfiguration(final MFDeviceConfiguration mfDeviceConfiguration) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Log.d(TAG, mGson.toJson(mfDeviceConfiguration));
-            }
-        });
-    }
 
     private MFSyncParams createSyncParams() {
         MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale(),
@@ -313,25 +334,27 @@ public class SyncActivity extends AppCompatActivity
         return MFSyncParams;
     }
 
-    @Override
-    public void onSucceed() {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Log.d(TAG, "operation finished");
-                setSyncPanelEnabled(true);
-            }
-        });
-    }
+    private class OperationCallback implements MFOperationResultCallback {
+        @Override
+        public void onSucceed() {
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "operation finished");
+                    setSyncPanelEnabled(true);
+                }
+            });
+        }
 
-    @Override
-    public void onFailed(final int reason) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Log.d(TAG, String.format("operation failed, reason = %d", reason));
-                setSyncPanelEnabled(true);
-            }
-        });
+        @Override
+        public void onFailed(final int reason) {
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, String.format("operation failed, reason = %d", reason));
+                    setSyncPanelEnabled(true);
+                }
+            });
+        }
     }
 }

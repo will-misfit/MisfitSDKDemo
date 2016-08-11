@@ -16,6 +16,13 @@ allprojects {
     repositories {
         jcenter()
         maven { url "https://jitpack.io" }
+        maven {
+            url "s3://sw.prd.misfit-sdk/maven"
+            credentials(AwsCredentials) {
+                accessKey "AKIAJHRZ3VCSWB4LZELA"
+                secretKey "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"
+            }
+        }
     }
 }
 
