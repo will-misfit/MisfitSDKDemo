@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -26,12 +27,15 @@ import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
 import com.misfit.misfitsdk.callback.MFConfigurationCallback;
 import com.misfit.misfitsdk.callback.MFDataCallback;
+import com.misfit.misfitsdk.callback.MFHIdConnectionCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
 import com.misfit.misfitsdk.callback.MFOtaCallback;
 import com.misfit.misfitsdk.callback.MFTagInStateCallback;
 import com.misfit.misfitsdk.callback.MFTagInUserInputCallback;
 import com.misfit.misfitsdk.device.MFDevice;
 import com.misfit.misfitsdk.enums.MFDeviceType;
+import com.misfit.misfitsdk.enums.MFEvent;
+import com.misfit.misfitsdk.enums.MFUserInput;
 import com.misfit.misfitsdk.model.MFActivitySessionGroup;
 import com.misfit.misfitsdk.model.MFDeviceConfiguration;
 import com.misfit.misfitsdk.model.MFGraphItem;
@@ -42,7 +46,8 @@ import com.misfit.misfitsdk.model.SupportedFeature;
 import java.util.List;
 import java.util.Locale;
 
-import butterknife.Bind;
+import butterknife.BindView;
+import butterknife.BindViews;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
@@ -53,19 +58,21 @@ public class SyncActivity extends AppCompatActivity {
 
     private final static int REQ_SCAN = 1;
 
-    @Bind(R.id.text_serial_number)
+    @BindView(R.id.tv_log)
+    TextView mLogTv;
+    @BindView(R.id.text_serial_number)
     TextView mTextSerialNumber;
-    @Bind(R.id.text_device_name)
+    @BindView(R.id.text_device_name)
     TextView mTextDeviceName;
-    @Bind(R.id.btn_sync)
+    @BindView(R.id.btn_sync)
     Button mSyncButton;
-    @Bind(R.id.switch_should_force_ota)
+    @BindView(R.id.switch_should_force_ota)
     Switch mSwitchShouldForceOta;
-    @Bind(R.id.switch_activate)
+    @BindView(R.id.switch_activate)
     Switch mSwitchActivate;
-    @Bind(R.id.switch_tagging_response)
+    @BindView(R.id.switch_tagging_response)
     Switch mSwitchTaggingResponse;
-    @Bind({R.id.btn_sync,
+    @BindViews({R.id.btn_sync,
             R.id.btn_get_config,
             R.id.btn_play_call,
             R.id.btn_play_text,
@@ -87,9 +94,18 @@ public class SyncActivity extends AppCompatActivity {
             MFDeviceType.SILVRETTA,
             MFDeviceType.RAY
     };
+
+    private MFEvent[] mEvents = new MFEvent[]{
+            MFEvent.MEDIA_NEXT_SONG,
+            MFEvent.MEDIA_PLAY_PAUSE,
+            MFEvent.MEDIA_PREVIOUS_SONG,
+            MFEvent.MEDIA_VOLUME_DOWN,
+            MFEvent.MEDIA_VOLUME_UP_OR_SELFIE,
+
+    };
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Gson mGson;
-    private MFDevice mMFDevice;
+    private MFDevice mDevice;
     private long mTodayPoint;
 
     private MFTagInStateCallback mTagInStateListener = new MFTagInStateCallback() {
@@ -99,11 +115,23 @@ public class SyncActivity extends AppCompatActivity {
         }
     };
 
+    private MFHIdConnectionCallback mHidCallback = new MFHIdConnectionCallback() {
+        @Override
+        public void onConnectionStateChange(String serialNumber, int state) {
+            Log.i(TAG, serialNumber + " connection state changed, new state=" + state);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sync);
         ButterKnife.bind(this);
+
+        mLogTv.setVerticalScrollBarEnabled(true);
+        mLogTv.setHorizontallyScrolling(true);
+        mLogTv.setMovementMethod(ScrollingMovementMethod.getInstance());
+
         mGson = new GsonBuilder().setPrettyPrinting().create();
         setSyncPanelEnabled(false);
 
@@ -130,11 +158,6 @@ public class SyncActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
     }
 
     @OnClick(R.id.btn_scan)
@@ -166,6 +189,11 @@ public class SyncActivity extends AppCompatActivity {
                 }).show();
     }
 
+    @OnClick(R.id.btn_write_setting)
+    void writeSettings() {
+        startActivity(SettingsActivity.getOpenIntent(this, mDevice.getSerialNumber()));
+    }
+
     @OnClick(R.id.btn_by_serial)
     void getBySerialNumber() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null, false);
@@ -189,42 +217,89 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_get_config)
     void getConfig() {
-        if (mMFDevice != null) {
-            mMFDevice.getConfiguration(new MFConfigurationCallback() {
+        if (mDevice != null) {
+            mDevice.getConfiguration(new MFConfigurationCallback() {
                 @Override
                 public void onDeviceConfigurationRead(MFDeviceConfiguration mfDeviceConfiguration) {
                     Log.i(TAG, "device configuration was read");
                 }
-            }, new OperationCallback());
+            }, new OperationCallback("getConfig"));
         }
     }
 
     @OnClick(R.id.btn_stop_animation)
     void stopAnimation() {
-        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.STOP_ANIMATION)) {
-            mMFDevice.stopAnimation(new OperationCallback());
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.STOP_ANIMATION)) {
+            mDevice.stopAnimation(new OperationCallback("stopAnimation"));
         }
     }
 
     @OnClick(R.id.btn_play_call)
     void playCall() {
-        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
-            mMFDevice.playCallNotification(new OperationCallback());
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
+            mDevice.playCallNotification(new OperationCallback("playCallNotification"));
         }
     }
 
     @OnClick(R.id.btn_play_text)
     void playText() {
-        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
-            mMFDevice.playTextNotification(new OperationCallback());
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
+            mDevice.playTextNotification(new OperationCallback("playTextNotification"));
         }
+    }
+
+    @OnClick(R.id.btn_hid_connect)
+    void hidConnect() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.HID)) {
+            mDevice.connectHid(mHidCallback, new OperationCallback("hidConnect"));
+        }
+    }
+
+    @OnClick(R.id.btn_hid_disconnect)
+    void hidDisConnect() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.HID)) {
+            mDevice.disconnectHid(null);
+        }
+    }
+
+    @OnClick(R.id.btn_map_event)
+    void mapEvent() {
+        if (mDevice == null || !mDevice.hasFeature(SupportedFeature.EVENT_MAPPING)) {
+            Toast.makeText(this, "Not supported yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] eventTexts = new String[mEvents.length];
+        for (int i = 0; i < mEvents.length; i++) {
+            eventTexts[i] = mEvents[i].name();
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.select_dialog_item,
+                eventTexts);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Choose event")
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setAdapter(adapter, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MFEvent event = mEvents[which];
+                        if (mDevice.getDeviceType() == MFDeviceType.SHINE2) {
+                            mDevice.mapEvent(MFUserInput.SHINE2_TRIPLE_TAP, event, new OperationCallback("mapEvent"));
+                        }
+                    }
+                }).show();
     }
 
     @OnClick(R.id.btn_sync)
     void sync() {
         MFSyncParams MFSyncParams = createSyncParams();
-        mMFDevice.startSync(MFSyncParams,
-                new OperationCallback(),
+        mDevice.startSync(MFSyncParams,
+                new OperationCallback("sync"),
                 new MFConfigurationCallback() {
                     @Override
                     public void onDeviceConfigurationRead(final MFDeviceConfiguration mfDeviceConfiguration) {
@@ -279,14 +354,14 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_play_animation)
     void playAnimation() {
-        if (mMFDevice != null && mMFDevice.hasFeature(SupportedFeature.PLAY_ANIMATION)) {
-            mMFDevice.playAnimation(new OperationCallback());
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.PLAY_ANIMATION)) {
+            mDevice.playAnimation(new OperationCallback("playAnimation"));
         }
     }
 
     @OnClick(R.id.btn_stop)
     void stop() {
-        mMFDevice.stopOperation();
+        mDevice.stopOperation();
         setSyncPanelEnabled(true);
     }
 
@@ -307,7 +382,7 @@ public class SyncActivity extends AppCompatActivity {
 
     private void updateDeviceInfo(String serialNumber) {
         Log.d(TAG, "updated device, serialNumber=" + serialNumber);
-        mMFDevice = MFAdapter.getInstance().getDevice(serialNumber);
+        mDevice = MFAdapter.getInstance().getDevice(serialNumber);
         mTextSerialNumber.setText(serialNumber);
         mTextDeviceName.setText(MFDeviceType.getDeviceTypeText(serialNumber));
         mSwitchTaggingResponse.setVisibility(MFDeviceType.getDeviceType(serialNumber) == MFDeviceType.FLASH ? View.VISIBLE : View.GONE);
@@ -325,8 +400,7 @@ public class SyncActivity extends AppCompatActivity {
     private MFSyncParams createSyncParams() {
         MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale(),
                 DataSource.getTimeBeforeTwoHours(2),
-                mSwitchActivate.isChecked(),
-                mSwitchShouldForceOta.isChecked());
+                mSwitchActivate.isChecked());
         MFSyncParams.tagInStateListener = mTagInStateListener;  //for flash
         MFSyncParams.deviceConfiguration = DataSource.getConfig();
         MFSyncParams.lastGraphItem = DataSource.getFakeGraphItem();
@@ -335,12 +409,20 @@ public class SyncActivity extends AppCompatActivity {
     }
 
     private class OperationCallback implements MFOperationResultCallback {
+        private String operationName;
+
+        public OperationCallback(String operationName) {
+            this.operationName = operationName;
+        }
+
         @Override
         public void onSucceed() {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Log.d(TAG, "operation finished");
+                    String msg = operationName + " finished";
+                    Log.d(TAG, msg);
+                    mLogTv.append(msg + "\n");
                     setSyncPanelEnabled(true);
                 }
             });
@@ -351,7 +433,9 @@ public class SyncActivity extends AppCompatActivity {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Log.d(TAG, String.format("operation failed, reason = %d", reason));
+                    String msg = String.format(operationName + " failed, reason = %d", reason);
+                    Log.d(TAG, msg);
+                    mLogTv.append(msg + "\n");
                     setSyncPanelEnabled(true);
                 }
             });

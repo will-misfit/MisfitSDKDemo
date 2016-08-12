@@ -106,6 +106,30 @@
                     android:layout_height="wrap_content"
                     android:text="Config" />
 
+                <Button
+                    android:id="@+id/btn_hid_connect"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HID connect" />
+
+                <Button
+                    android:id="@+id/btn_hid_disconnect"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HID disconnect" />
+
+                <Button
+                    android:id="@+id/btn_map_event"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Map Event" />
+
+                <Button
+                    android:id="@+id/btn_write_setting"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="write setting" />
+
             </org.houxg.flexlayout.FlexLayout>
 
             <View
@@ -152,5 +176,10 @@
         android:layout_marginBottom="4dp"
         android:layout_marginTop="4dp"
         android:background="@color/divider" />
+
+    <TextView
+        android:id="@+id/tv_log"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent" />
 
 </LinearLayout>

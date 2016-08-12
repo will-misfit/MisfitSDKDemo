@@ -20,7 +20,7 @@ import com.misfit.misfitsdk.enums.MFDeviceType;
 
 import java.util.ArrayList;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnItemClick;
 
@@ -33,7 +33,7 @@ public class ScanListActivity extends AppCompatActivity implements MFScanCallbac
 
     DeviceAdapter mAdapter;
 
-    @Bind(R.id.list_device)
+    @BindView(R.id.list_device)
     ListView mListDevice;
 
     private Handler mMainHandler = new Handler(Looper.getMainLooper());
@@ -137,13 +137,13 @@ public class ScanListActivity extends AppCompatActivity implements MFScanCallbac
 
         static class ViewHolder extends SimpleListAdapter.ViewHolder {
 
-            @Bind(R.id.text_name)
+            @BindView(R.id.text_name)
             TextView name;
 
-            @Bind(R.id.text_serial_number)
+            @BindView(R.id.text_serial_number)
             TextView serial;
 
-            @Bind(R.id.text_rssi)
+            @BindView(R.id.text_rssi)
             TextView rssi;
 
             public ViewHolder(View itemView) {
