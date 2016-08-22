@@ -7,12 +7,56 @@
     android:background="#fff"
     android:orientation="vertical">
 
-    <Switch
-        android:id="@+id/sw_call_text"
+    <TextView
+        android:id="@+id/tv_alarm"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="12dp"
-        android:text="Call Text notification" />
+        android:padding="8dp"
+        android:text="Alarm Setting"
+        android:textSize="16sp" />
+
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_hour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="23"
+        app:range_min="0"
+        app:title_text="hour" />
+
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_min"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="59"
+        app:range_min="0"
+        app:title_text="minute" />
+
+    <Button
+        android:id="@+id/btn_repeat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_clear_alarms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="clear all" />
+
+        <Button
+            android:id="@+id/btn_set_alarm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="set" />
+
+    </LinearLayout>
 
     <View
         android:layout_width="match_parent"
@@ -21,57 +65,78 @@
         android:layout_marginTop="4dp"
         android:background="@color/divider" />
 
-    <Switch
-        android:id="@+id/sw_alarm"
+    <TextView
+        android:id="@+id/tv_inActivityNudge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:padding="8dp"
-        android:text="Alarm"
+        android:text="InActivityNudge Setting"
         android:textSize="16sp" />
 
-    <LinearLayout
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_nudge_start_hour"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_margin="8dp"
+        app:range_max="23"
+        app:range_min="0"
+        app:title_text="start_hour" />
 
-        <Switch
-            android:id="@+id/sw_clear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="12dp"
-            android:text="Clear alarm" />
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_nudge_start_min"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="59"
+        app:range_min="0"
+        app:title_text="start_min  " />
 
-        <com.misfit.misfitsdkdemo.view.RangePreference
-            android:id="@+id/prf_hour"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            app:range_max="23"
-            app:range_min="0"
-            app:title_text="hour" />
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_nudge_end_hour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="23"
+        app:range_min="0"
+        app:title_text="end_hour  " />
 
-        <com.misfit.misfitsdkdemo.view.RangePreference
-            android:id="@+id/prf_min"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            app:range_max="59"
-            app:range_min="0"
-            app:title_text="minute" />
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_nudge_end_min"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="59"
+        app:range_min="0"
+        app:title_text="end_min    " />
 
-        <com.misfit.misfitsdkdemo.view.RangePreference
-            android:id="@+id/prf_smart_window"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            app:range_max="59"
-            app:range_min="0"
-            app:title_text="smart window" />
+    <com.misfit.misfitsdkdemo.view.RangePreference
+        android:id="@+id/prf_nudge_repeat_min"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:range_max="59"
+        app:range_min="0"
+        app:title_text="repeat_min" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal">
 
         <Button
-            android:id="@+id/btn_repeat"
+            android:id="@+id/btn_enable_inactivity_nudge"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:text="enable" />
+
+        <Button
+            android:id="@+id/btn_disable_inactivity_nudge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="disable" />
 
     </LinearLayout>
+
 </LinearLayout>

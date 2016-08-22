@@ -130,6 +130,17 @@
                     android:layout_height="wrap_content"
                     android:text="write setting" />
 
+                <Button
+                    android:id="@+id/btn_start_scan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="start scan" />
+
+                <Button
+                    android:id="@+id/btn_stop_scan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="stop scan" />
             </org.houxg.flexlayout.FlexLayout>
 
             <View
@@ -142,8 +153,8 @@
             <org.houxg.flexlayout.FlexLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_marginStart="4dp">
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp">
 
                 <Switch
                     android:id="@+id/switch_activate"
@@ -153,20 +164,12 @@
                     android:text="activate" />
 
                 <Switch
-                    android:id="@+id/switch_should_force_ota"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="force OTA" />
-
-                <Switch
                     android:id="@+id/switch_tagging_response"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:text="sync while taggingIn" />
             </org.houxg.flexlayout.FlexLayout>
-
         </LinearLayout>
     </ScrollView>
 
@@ -179,7 +182,9 @@
 
     <TextView
         android:id="@+id/tv_log"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="4dp"
+        android:textSize="12sp" />
 
 </LinearLayout>

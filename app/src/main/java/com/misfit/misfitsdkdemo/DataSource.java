@@ -46,7 +46,6 @@ public class DataSource {
                 MFDeviceConfiguration.ClockState.CLOCK_STATE_DEFAULT,
                 MFDeviceConfiguration.TripleTapState.TRIPLE_TAP_STATE_DEFAULT,
                 MFDeviceConfiguration.ActivityTaggingState.ACTIVITY_TAGGING_DEFAULT,
-                120,
                 2000
         );
     }

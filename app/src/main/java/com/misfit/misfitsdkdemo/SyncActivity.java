@@ -15,7 +15,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -30,9 +29,9 @@ import com.misfit.misfitsdk.callback.MFDataCallback;
 import com.misfit.misfitsdk.callback.MFHIdConnectionCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
 import com.misfit.misfitsdk.callback.MFOtaCallback;
-import com.misfit.misfitsdk.callback.MFTagInStateCallback;
-import com.misfit.misfitsdk.callback.MFTagInUserInputCallback;
+import com.misfit.misfitsdk.callback.MFScanCallback;
 import com.misfit.misfitsdk.device.MFDevice;
+import com.misfit.misfitsdk.enums.MFDefine;
 import com.misfit.misfitsdk.enums.MFDeviceType;
 import com.misfit.misfitsdk.enums.MFEvent;
 import com.misfit.misfitsdk.enums.MFUserInput;
@@ -64,10 +63,6 @@ public class SyncActivity extends AppCompatActivity {
     TextView mTextSerialNumber;
     @BindView(R.id.text_device_name)
     TextView mTextDeviceName;
-    @BindView(R.id.btn_sync)
-    Button mSyncButton;
-    @BindView(R.id.switch_should_force_ota)
-    Switch mSwitchShouldForceOta;
     @BindView(R.id.switch_activate)
     Switch mSwitchActivate;
     @BindView(R.id.switch_tagging_response)
@@ -78,8 +73,14 @@ public class SyncActivity extends AppCompatActivity {
             R.id.btn_play_text,
             R.id.btn_stop_animation,
             R.id.switch_activate,
+            R.id.btn_map_event,
+            R.id.btn_start_scan,
+            R.id.btn_stop_scan,
+            R.id.btn_hid_connect,
+            R.id.btn_hid_disconnect,
+            R.id.btn_play_animation,
             R.id.switch_tagging_response,
-            R.id.switch_should_force_ota})
+            R.id.btn_write_setting})
     List<View> syncPanel;
 
     private int[] mDeviceTypeInts = new int[]{
@@ -106,14 +107,6 @@ public class SyncActivity extends AppCompatActivity {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Gson mGson;
     private MFDevice mDevice;
-    private long mTodayPoint;
-
-    private MFTagInStateCallback mTagInStateListener = new MFTagInStateCallback() {
-        @Override
-        public void onDeviceTaggingIn(int deviceType, MFTagInUserInputCallback inputCallback) {
-            inputCallback.onUserInputForTaggingIn(mSwitchTaggingResponse.isChecked());
-        }
-    };
 
     private MFHIdConnectionCallback mHidCallback = new MFHIdConnectionCallback() {
         @Override
@@ -160,6 +153,48 @@ public class SyncActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @OnClick(R.id.btn_start_scan)
+    void startScan() {
+        String[] deviceTypeStrings = new String[mDeviceTypeInts.length];
+        for (int i = 0; i < mDeviceTypeInts.length; i++) {
+            deviceTypeStrings[i] = MFDeviceType.getDeviceTypeText(mDeviceTypeInts[i]);
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.select_dialog_item,
+                deviceTypeStrings);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Choose device type")
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setAdapter(adapter, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int selectedDeviceType = mDeviceTypeInts[which];
+                        MFAdapter.getInstance().startScanning(selectedDeviceType, new MFScanCallback() {
+                            @Override
+                            public void onScanResult(MFDevice device, int rssi) {
+                                Log.i("outside", "found device=" + device.getSerialNumber());
+                            }
+
+                            @Override
+                            public void onScanFailed(@MFDefine.ScanFailedReason int reason) {
+                                Log.i("outside", "failed=" + reason);
+                            }
+                        });
+                    }
+                }).show();
+    }
+
+    @OnClick(R.id.btn_stop_scan)
+    void stopScan() {
+        MFAdapter.getInstance().stopScanning();
+    }
+
     @OnClick(R.id.btn_scan)
     void scan() {
         String[] deviceTypeStrings = new String[mDeviceTypeInts.length];
@@ -191,6 +226,9 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_write_setting)
     void writeSettings() {
+        if (mDevice == null) {
+            return;
+        }
         startActivity(SettingsActivity.getOpenIntent(this, mDevice.getSerialNumber()));
     }
 
@@ -303,7 +341,6 @@ public class SyncActivity extends AppCompatActivity {
                 new MFConfigurationCallback() {
                     @Override
                     public void onDeviceConfigurationRead(final MFDeviceConfiguration mfDeviceConfiguration) {
-                        mTodayPoint = mfDeviceConfiguration.getActivityPoint();
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -313,10 +350,9 @@ public class SyncActivity extends AppCompatActivity {
                     }
                 }, new MFDataCallback() {
                     @Override
-                    public int onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
+                    public void onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
                         Log.i(TAG, Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
                         Log.i(TAG, Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
-                        return (int) mTodayPoint;
                     }
 
                     @Override
@@ -342,11 +378,6 @@ public class SyncActivity extends AppCompatActivity {
                     @Override
                     public void onProgress(float v) {
                         Log.i(TAG, "ota progress=" + v);
-                    }
-
-                    @Override
-                    public boolean isForceOta(boolean hasNewFirmware) {
-                        return mSwitchShouldForceOta.isChecked();
                     }
                 });
         setSyncPanelEnabled(false);
@@ -394,14 +425,9 @@ public class SyncActivity extends AppCompatActivity {
         }
     }
 
-    /* interface methods of OnOtaListener */
-
-
     private MFSyncParams createSyncParams() {
         MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale(),
-                DataSource.getTimeBeforeTwoHours(2),
                 mSwitchActivate.isChecked());
-        MFSyncParams.tagInStateListener = mTagInStateListener;  //for flash
         MFSyncParams.deviceConfiguration = DataSource.getConfig();
         MFSyncParams.lastGraphItem = DataSource.getFakeGraphItem();
 
