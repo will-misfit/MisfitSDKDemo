@@ -40,7 +40,7 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
-    compile('com.misfit:MisfitSDK:0.7.1@aar') {
+    compile('com.misfit:MisfitSDK:0.7.3@aar') {
         transitive = true
     }
     compile 'com.android.support:appcompat-v7:24.0.0'

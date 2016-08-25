@@ -77,6 +77,12 @@
                     android:text="animation" />
 
                 <Button
+                    android:id="@+id/btn_set_goal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Set goal" />
+
+                <Button
                     android:id="@+id/btn_stop_animation"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -119,10 +125,28 @@
                     android:text="HID disconnect" />
 
                 <Button
-                    android:id="@+id/btn_map_event"
+                    android:id="@+id/btn_map_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Map Event" />
+                    android:text="Map button" />
+
+                <Button
+                    android:id="@+id/btn_map_activity_tagging"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Map activity tagging" />
+
+                <Button
+                    android:id="@+id/btn_unmap_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Unmap all" />
+
+                <Button
+                    android:id="@+id/btn_get_mapping"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="get Mapping Type" />
 
                 <Button
                     android:id="@+id/btn_write_setting"
@@ -141,6 +165,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="stop scan" />
+
+                <Button
+                    android:id="@+id/btn_start_listen_gesture"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="start Listen Gesture"/>
+
+                <Button
+                    android:id="@+id/btn_stop_listen_gesture"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Stop Listen Gesture"/>
             </org.houxg.flexlayout.FlexLayout>
 
             <View

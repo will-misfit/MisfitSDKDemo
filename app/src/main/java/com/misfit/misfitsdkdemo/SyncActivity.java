@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -15,6 +16,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -24,8 +26,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
-import com.misfit.misfitsdk.callback.MFConfigurationCallback;
 import com.misfit.misfitsdk.callback.MFDataCallback;
+import com.misfit.misfitsdk.callback.MFGestureCallback;
+import com.misfit.misfitsdk.callback.MFGetCallback;
 import com.misfit.misfitsdk.callback.MFHIdConnectionCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
 import com.misfit.misfitsdk.callback.MFOtaCallback;
@@ -34,13 +37,15 @@ import com.misfit.misfitsdk.device.MFDevice;
 import com.misfit.misfitsdk.enums.MFDefine;
 import com.misfit.misfitsdk.enums.MFDeviceType;
 import com.misfit.misfitsdk.enums.MFEvent;
-import com.misfit.misfitsdk.enums.MFUserInput;
+import com.misfit.misfitsdk.enums.MFGesture;
+import com.misfit.misfitsdk.enums.MFMappingType;
 import com.misfit.misfitsdk.model.MFActivitySessionGroup;
-import com.misfit.misfitsdk.model.MFDeviceConfiguration;
+import com.misfit.misfitsdk.model.MFDeviceInfo;
 import com.misfit.misfitsdk.model.MFGraphItem;
 import com.misfit.misfitsdk.model.MFSleepSession;
 import com.misfit.misfitsdk.model.MFSyncParams;
 import com.misfit.misfitsdk.model.SupportedFeature;
+import com.misfit.misfitsdk.utils.MLog;
 
 import java.util.List;
 import java.util.Locale;
@@ -57,6 +62,8 @@ public class SyncActivity extends AppCompatActivity {
 
     private final static int REQ_SCAN = 1;
 
+    @BindView(R.id.btn_stop_listen_gesture)
+    Button mBtnStopListenGesture;
     @BindView(R.id.tv_log)
     TextView mLogTv;
     @BindView(R.id.text_serial_number)
@@ -72,14 +79,17 @@ public class SyncActivity extends AppCompatActivity {
             R.id.btn_play_call,
             R.id.btn_play_text,
             R.id.btn_stop_animation,
-            R.id.switch_activate,
-            R.id.btn_map_event,
+            R.id.btn_map_button,
             R.id.btn_start_scan,
             R.id.btn_stop_scan,
             R.id.btn_hid_connect,
             R.id.btn_hid_disconnect,
             R.id.btn_play_animation,
-            R.id.switch_tagging_response,
+            R.id.btn_unmap_all,
+            R.id.btn_start_listen_gesture,
+            R.id.btn_stop_listen_gesture,
+            R.id.btn_get_mapping,
+            R.id.btn_map_activity_tagging,
             R.id.btn_write_setting})
     List<View> syncPanel;
 
@@ -102,7 +112,14 @@ public class SyncActivity extends AppCompatActivity {
             MFEvent.MEDIA_PREVIOUS_SONG,
             MFEvent.MEDIA_VOLUME_DOWN,
             MFEvent.MEDIA_VOLUME_UP_OR_SELFIE,
+    };
 
+    private MFGesture[] mShine2Gesture = new MFGesture[]{
+            MFGesture.SHINE2_TRIPLE_TAP
+    };
+
+    private MFGesture[] mRayGesture = new MFGesture[]{
+            MFGesture.RAY_TRIPLE_TAP
     };
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Gson mGson;
@@ -111,7 +128,7 @@ public class SyncActivity extends AppCompatActivity {
     private MFHIdConnectionCallback mHidCallback = new MFHIdConnectionCallback() {
         @Override
         public void onConnectionStateChange(String serialNumber, int state) {
-            Log.i(TAG, serialNumber + " connection state changed, new state=" + state);
+            log(serialNumber + " connection state changed, new state=" + state);
         }
     };
 
@@ -218,7 +235,7 @@ public class SyncActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialog, int which) {
                         int selectedDeviceType = mDeviceTypeInts[which];
                         Intent intent = ScanListActivity.getOpenIntent(SyncActivity.this, selectedDeviceType);
-                        Log.i(TAG, String.format("start scan, device type is %s ", MFDeviceType.getDeviceTypeText(selectedDeviceType)));
+                        log(String.format("start scan, device type is %s ", MFDeviceType.getDeviceTypeText(selectedDeviceType)));
                         startActivityForResult(intent, REQ_SCAN);
                     }
                 }).show();
@@ -226,10 +243,11 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_write_setting)
     void writeSettings() {
-        if (mDevice == null) {
-            return;
+        String serialNumber = "";
+        if (mDevice != null) {
+            serialNumber = mDevice.getSerialNumber();
         }
-        startActivity(SettingsActivity.getOpenIntent(this, mDevice.getSerialNumber()));
+        startActivity(SettingsActivity.getOpenIntent(this, serialNumber));
     }
 
     @OnClick(R.id.btn_by_serial)
@@ -241,7 +259,7 @@ public class SyncActivity extends AppCompatActivity {
                 .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        String serial = editView.getText().toString().toUpperCase(Locale.ENGLISH);
+                        String serial = editView.getText().toString().toUpperCase(Locale.US);
                         if (TextUtils.isEmpty(serial)) {
                             Toast.makeText(SyncActivity.this, "Serial number can not be empty", Toast.LENGTH_SHORT).show();
                         } else {
@@ -256,14 +274,42 @@ public class SyncActivity extends AppCompatActivity {
     @OnClick(R.id.btn_get_config)
     void getConfig() {
         if (mDevice != null) {
-            mDevice.getConfiguration(new MFConfigurationCallback() {
+            setSyncPanelEnabled(false);
+            mDevice.getDeviceInfo(new MFGetCallback<MFDeviceInfo>() {
                 @Override
-                public void onDeviceConfigurationRead(MFDeviceConfiguration mfDeviceConfiguration) {
-                    Log.i(TAG, "device configuration was read");
+                public void onGet(final MFDeviceInfo data) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            log(mGson.toJson(data));
+                        }
+                    });
                 }
             }, new OperationCallback("getConfig"));
         }
     }
+
+    @OnClick(R.id.btn_set_goal)
+    void setGoal() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null, false);
+        final EditText editView = (EditText) view.findViewById(R.id.edit);
+        editView.setInputType(InputType.TYPE_CLASS_NUMBER);
+        new AlertDialog.Builder(this)
+                .setView(view)
+                .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        String goal = editView.getText().toString().toUpperCase(Locale.US);
+                        if (TextUtils.isEmpty(goal)) {
+                            Toast.makeText(SyncActivity.this, "Can not be empty", Toast.LENGTH_SHORT).show();
+                        } else {
+                            mDevice.setGoal(Integer.valueOf(goal), new OperationCallback("setGoal"));
+                        }
+                    }
+                })
+                .show();
+    }
+
 
     @OnClick(R.id.btn_stop_animation)
     void stopAnimation() {
@@ -300,84 +346,125 @@ public class SyncActivity extends AppCompatActivity {
         }
     }
 
-    @OnClick(R.id.btn_map_event)
-    void mapEvent() {
-        if (mDevice == null || !mDevice.hasFeature(SupportedFeature.EVENT_MAPPING)) {
+    @OnClick(R.id.btn_map_button)
+    void mapButton() {
+        if (mDevice == null || !mDevice.hasFeature(SupportedFeature.MAP_BUTTON)) {
             Toast.makeText(this, "Not supported yet", Toast.LENGTH_SHORT).show();
             return;
         }
-        String[] eventTexts = new String[mEvents.length];
-        for (int i = 0; i < mEvents.length; i++) {
-            eventTexts[i] = mEvents[i].name();
-        }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.select_dialog_item,
-                eventTexts);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Choose event")
-                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+        if (mDevice.getDeviceType() == MFDeviceType.SHINE2) {
+            mapButton(mShine2Gesture);
+        } else if (mDevice.getDeviceType() == MFDeviceType.RAY) {
+            mapButton(mRayGesture);
+        } else {
+            Toast.makeText(this, "Not supported yet", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void mapButton(final MFGesture[] gestures) {
+        String[] strings = new String[gestures.length];
+        for (int i = 0; i < gestures.length; i++) {
+            strings[i] = gestures[i].name();
+        }
+        DialogUtils.showSlectionDialog(this, strings, "Select Gesture", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                final MFGesture selected = gestures[which];
+                String[] strings = new String[mEvents.length];
+                for (int i = 0; i < mEvents.length; i++) {
+                    strings[i] = mEvents[i].name();
+                }
+                DialogUtils.showSlectionDialog(SyncActivity.this, strings, "Select Event", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
+                        setSyncPanelEnabled(false);
+                        mDevice.mapButton(selected, mEvents[which], new OperationCallback("mapButton"));
                     }
-                })
-                .setAdapter(adapter, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        MFEvent event = mEvents[which];
-                        if (mDevice.getDeviceType() == MFDeviceType.SHINE2) {
-                            mDevice.mapEvent(MFUserInput.SHINE2_TRIPLE_TAP, event, new OperationCallback("mapEvent"));
+                });
+            }
+        });
+    }
+
+    @OnClick(R.id.btn_map_activity_tagging)
+    void mapActivityTagging() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.MAP_ACTIVITY_TAGGING)) {
+            setSyncPanelEnabled(false);
+            mDevice.mapActivityTagging(new OperationCallback("mapActivityTagging"));
+        }
+    }
+
+    @OnClick(R.id.btn_get_mapping)
+    void getMappingType() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.GET_MAPPING_TYPE)) {
+            setSyncPanelEnabled(false);
+            mDevice.getMappingType(new MFGetCallback<MFMappingType>() {
+                @Override
+                public void onGet(final MFMappingType data) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            log("Mapping type:" + data);
                         }
-                    }
-                }).show();
+                    });
+                }
+            }, new OperationCallback("getMappingType"));
+        }
+    }
+
+    @OnClick(R.id.btn_unmap_all)
+    void unmapAll() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.UNMAP_ALL)) {
+            setSyncPanelEnabled(false);
+            mDevice.unmapAll(new OperationCallback("unmapAll"));
+        }
     }
 
     @OnClick(R.id.btn_sync)
     void sync() {
-        MFSyncParams MFSyncParams = createSyncParams();
-        mDevice.startSync(MFSyncParams,
+        MFSyncParams syncParams = createSyncParams();
+        mDevice.startSync(syncParams,
                 new OperationCallback("sync"),
-                new MFConfigurationCallback() {
+                new MFGetCallback<MFDeviceInfo>() {
                     @Override
-                    public void onDeviceConfigurationRead(final MFDeviceConfiguration mfDeviceConfiguration) {
-                        mainHandler.post(new Runnable() {
+                    public void onGet(final MFDeviceInfo data) {
+                        runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Log.d(TAG, mGson.toJson(mfDeviceConfiguration));
+                                log(mGson.toJson(data));
                             }
                         });
                     }
                 }, new MFDataCallback() {
                     @Override
                     public void onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
-                        Log.i(TAG, Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
-                        Log.i(TAG, Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
+                        log(Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
+                        log(Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
                     }
 
                     @Override
                     public void onSleepSessionSynced(List<MFSleepSession> MFSleepSessions) {
-                        Log.i(TAG, Printer.getSleepSessionText(MFSleepSessions));
+                        log(Printer.getSleepSessionText(MFSleepSessions));
                     }
 
                     @Override
                     public void onGraphItemSynced(List<MFGraphItem> MFGraphItems) {
-                        Log.i(TAG, Printer.getGraphItemText(MFGraphItems));
+                        log(Printer.getGraphItemText(MFGraphItems));
                     }
                 }, new MFOtaCallback() {
                     @Override
                     public void onEnter() {
-                        Log.i(TAG, "ota enter");
+                        log("ota enter");
                     }
 
                     @Override
                     public void onCompleted() {
-                        Log.i(TAG, "ota completed");
+                        log("ota completed");
                     }
 
                     @Override
                     public void onProgress(float v) {
-                        Log.i(TAG, "ota progress=" + v);
+                        log("ota progress=" + v);
                     }
                 });
         setSyncPanelEnabled(false);
@@ -396,11 +483,58 @@ public class SyncActivity extends AppCompatActivity {
         setSyncPanelEnabled(true);
     }
 
+    @OnClick(R.id.btn_start_listen_gesture)
+    void startListenGesture() {
+        if (mDevice != null && mDevice.hasFeature(SupportedFeature.LISTEN_GESTURE)) {
+            mDevice.startListenGesture(new MFGestureCallback() {
+                @Override
+                public void onReady() {
+                    log("gesture is ready for receiving. ");
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setSyncPanelEnabled(false);
+                            mBtnStopListenGesture.setEnabled(true);
+                        }
+                    });
+                }
+
+                @Override
+                public void onGestureReceived(MFGesture gesture) {
+                    log("gesture is " + gesture.name());
+                }
+
+                @Override
+                public void onStopped() {
+                    log("gesture is stopped. ");
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setSyncPanelEnabled(true);
+                        }
+                    });
+                }
+
+                @Override
+                public void onHeartbeatReceived() {
+                    log("gesture's heart beat is received. ");
+                }
+            }, new OperationCallback("startListenGesture"));
+        }
+    }
+
+    @OnClick(R.id.btn_stop_listen_gesture)
+    void stopListenGesture() {
+        if (mDevice != null) {
+            mDevice.stopListenGesture(new OperationCallback("stopListenGesture"));
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK) {
-            Log.d(TAG, String.format("result not ok, req = %d, result = %d", requestCode, resultCode));
+            log(String.format(Locale.US, "result not ok, req = %d, result = %d", requestCode, resultCode));
             return;
         }
         switch (requestCode) {
@@ -412,7 +546,7 @@ public class SyncActivity extends AppCompatActivity {
     }
 
     private void updateDeviceInfo(String serialNumber) {
-        Log.d(TAG, "updated device, serialNumber=" + serialNumber);
+        log("updated device, serialNumber=" + serialNumber);
         mDevice = MFAdapter.getInstance().getDevice(serialNumber);
         mTextSerialNumber.setText(serialNumber);
         mTextDeviceName.setText(MFDeviceType.getDeviceTypeText(serialNumber));
@@ -428,10 +562,19 @@ public class SyncActivity extends AppCompatActivity {
     private MFSyncParams createSyncParams() {
         MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale(),
                 mSwitchActivate.isChecked());
-        MFSyncParams.deviceConfiguration = DataSource.getConfig();
         MFSyncParams.lastGraphItem = DataSource.getFakeGraphItem();
 
         return MFSyncParams;
+    }
+
+    private void log(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, msg);
+                mLogTv.append(msg + "\n");
+            }
+        });
     }
 
     private class OperationCallback implements MFOperationResultCallback {
@@ -443,12 +586,11 @@ public class SyncActivity extends AppCompatActivity {
 
         @Override
         public void onSucceed() {
-            mainHandler.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     String msg = operationName + " finished";
-                    Log.d(TAG, msg);
-                    mLogTv.append(msg + "\n");
+                    log(msg);
                     setSyncPanelEnabled(true);
                 }
             });
@@ -456,12 +598,11 @@ public class SyncActivity extends AppCompatActivity {
 
         @Override
         public void onFailed(final int reason) {
-            mainHandler.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     String msg = String.format(operationName + " failed, reason = %d", reason);
-                    Log.d(TAG, msg);
-                    mLogTv.append(msg + "\n");
+                    log(msg);
                     setSyncPanelEnabled(true);
                 }
             });
