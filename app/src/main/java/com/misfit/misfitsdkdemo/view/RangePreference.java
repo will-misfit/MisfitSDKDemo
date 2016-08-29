@@ -24,6 +24,8 @@ public class RangePreference extends LinearLayout implements RangeBar.ProgressCh
     @BindView(R.id.tv_value)
     TextView mValueTv;
 
+    private String[] mValues;
+
     public RangePreference(Context context, AttributeSet attrs) {
         super(context, attrs);
         TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.RangePreference);
@@ -39,9 +41,21 @@ public class RangePreference extends LinearLayout implements RangeBar.ProgressCh
         mRangeBar.setProgressChangedListener(this);
     }
 
+    public void setValues(String[] values) {
+        this.mValues = values;
+    }
+
     @Override
     public void onProgressChanged(RangeBar rangeBar, int i) {
-        mValueTv.setText(String.valueOf(i));
+        if (mValues == null) {
+            mValueTv.setText(String.valueOf(i));
+        } else {
+            try {
+                mValueTv.setText(mValues[i - rangeBar.getMin()]);
+            } catch (Exception e) {
+                mValueTv.setText("OUT_OF_RANGE");
+            }
+        }
     }
 
     @Override

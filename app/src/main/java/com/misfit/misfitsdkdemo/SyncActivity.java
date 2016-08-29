@@ -3,13 +3,10 @@ package com.misfit.misfitsdkdemo;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,14 +15,12 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
+import com.misfit.misfitsdk.callback.MFBleCallback;
 import com.misfit.misfitsdk.callback.MFDataCallback;
 import com.misfit.misfitsdk.callback.MFGestureCallback;
 import com.misfit.misfitsdk.callback.MFGetCallback;
@@ -40,15 +35,20 @@ import com.misfit.misfitsdk.enums.MFEvent;
 import com.misfit.misfitsdk.enums.MFGesture;
 import com.misfit.misfitsdk.enums.MFMappingType;
 import com.misfit.misfitsdk.model.MFActivitySessionGroup;
+import com.misfit.misfitsdk.model.MFAlarmSettings;
 import com.misfit.misfitsdk.model.MFDeviceInfo;
 import com.misfit.misfitsdk.model.MFGraphItem;
+import com.misfit.misfitsdk.model.MFInactivityNudgeSettings;
 import com.misfit.misfitsdk.model.MFSleepSession;
 import com.misfit.misfitsdk.model.MFSyncParams;
 import com.misfit.misfitsdk.model.SupportedFeature;
 import com.misfit.misfitsdk.utils.MLog;
+import com.misfit.misfitsdkdemo.view.RangePreference;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.BindViews;
@@ -61,19 +61,13 @@ public class SyncActivity extends AppCompatActivity {
     private final static String TAG = "SyncActivity";
 
     private final static int REQ_SCAN = 1;
-
     @BindView(R.id.btn_stop_listen_gesture)
     Button mBtnStopListenGesture;
-    @BindView(R.id.tv_log)
-    TextView mLogTv;
+
     @BindView(R.id.text_serial_number)
     TextView mTextSerialNumber;
     @BindView(R.id.text_device_name)
     TextView mTextDeviceName;
-    @BindView(R.id.switch_activate)
-    Switch mSwitchActivate;
-    @BindView(R.id.switch_tagging_response)
-    Switch mSwitchTaggingResponse;
     @BindViews({R.id.btn_sync,
             R.id.btn_get_config,
             R.id.btn_play_call,
@@ -82,15 +76,18 @@ public class SyncActivity extends AppCompatActivity {
             R.id.btn_map_button,
             R.id.btn_start_scan,
             R.id.btn_stop_scan,
+            R.id.btn_debug_sync,
             R.id.btn_hid_connect,
             R.id.btn_hid_disconnect,
             R.id.btn_play_animation,
             R.id.btn_unmap_all,
             R.id.btn_start_listen_gesture,
             R.id.btn_stop_listen_gesture,
+            R.id.btn_set_goal,
             R.id.btn_get_mapping,
-            R.id.btn_map_activity_tagging,
-            R.id.btn_write_setting})
+            R.id.btn_alarm,
+            R.id.btn_inactivity_nudge,
+            R.id.btn_map_activity_tagging})
     List<View> syncPanel;
 
     private int[] mDeviceTypeInts = new int[]{
@@ -114,15 +111,15 @@ public class SyncActivity extends AppCompatActivity {
             MFEvent.MEDIA_VOLUME_UP_OR_SELFIE,
     };
 
-    private MFGesture[] mShine2Gesture = new MFGesture[]{
-            MFGesture.SHINE2_TRIPLE_TAP
-    };
-
     private MFGesture[] mRayGesture = new MFGesture[]{
             MFGesture.RAY_TRIPLE_TAP
+
     };
-    private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Gson mGson;
+
+    private MFGesture[] mShine2Gesture = new MFGesture[]{
+            MFGesture.SHINE2_TRIPLE_TAP
+
+    };
     private MFDevice mDevice;
 
     private MFHIdConnectionCallback mHidCallback = new MFHIdConnectionCallback() {
@@ -132,17 +129,16 @@ public class SyncActivity extends AppCompatActivity {
         }
     };
 
+    private Map<View, SupportedFeature> featureButtons;
+    public StringBuilder mLogBuffer = new StringBuilder();
+    private AlertDialog mLogDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sync);
         ButterKnife.bind(this);
-
-        mLogTv.setVerticalScrollBarEnabled(true);
-        mLogTv.setHorizontallyScrolling(true);
-        mLogTv.setMovementMethod(ScrollingMovementMethod.getInstance());
-
-        mGson = new GsonBuilder().setPrettyPrinting().create();
+        initButtons();
         setSyncPanelEnabled(false);
 
         MFAdapter sdkAdapter = MFAdapter.getInstance();
@@ -150,6 +146,24 @@ public class SyncActivity extends AppCompatActivity {
                 BuildConfig.APPLICATION_ID,
                 BuildConfig.VERSION_NAME,
                 "5c203ef8-d62a-11e5-ab30-625662870761");
+    }
+
+    private void initButtons() {
+        featureButtons = new HashMap<>();
+        featureButtons.put(findViewById(R.id.btn_play_animation), SupportedFeature.PLAY_ANIMATION);
+        featureButtons.put(findViewById(R.id.btn_stop_animation), SupportedFeature.STOP_ANIMATION);
+        featureButtons.put(findViewById(R.id.btn_play_call), SupportedFeature.CALL_TEXT_NOTIFICATION);
+        featureButtons.put(findViewById(R.id.btn_play_text), SupportedFeature.CALL_TEXT_NOTIFICATION);
+        featureButtons.put(findViewById(R.id.btn_hid_connect), SupportedFeature.HID);
+        featureButtons.put(findViewById(R.id.btn_hid_disconnect), SupportedFeature.HID);
+        featureButtons.put(findViewById(R.id.btn_map_button), SupportedFeature.MAP_BUTTON);
+        featureButtons.put(findViewById(R.id.btn_map_activity_tagging), SupportedFeature.MAP_ACTIVITY_TAGGING);
+        featureButtons.put(findViewById(R.id.btn_unmap_all), SupportedFeature.UNMAP_ALL);
+        featureButtons.put(findViewById(R.id.btn_get_mapping), SupportedFeature.GET_MAPPING_TYPE);
+        featureButtons.put(findViewById(R.id.btn_start_listen_gesture), SupportedFeature.LISTEN_GESTURE);
+        featureButtons.put(findViewById(R.id.btn_stop_listen_gesture), SupportedFeature.LISTEN_GESTURE);
+        featureButtons.put(findViewById(R.id.btn_alarm), SupportedFeature.ALARM);
+        featureButtons.put(findViewById(R.id.btn_inactivity_nudge), SupportedFeature.INACTIVITY_NUDGE);
     }
 
     @Override
@@ -160,8 +174,18 @@ public class SyncActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_log) {
+            if (mLogDialog != null && mLogDialog.isShowing()) {
+                mLogDialog.dismiss();
+            }
+            mLogDialog = new AlertDialog.Builder(this)
+                    .setTitle("Logs")
+                    .setMessage(mLogBuffer.toString())
+                    .show();
+            return true;
+        }
         if (item.getItemId() == R.id.action_about) {
-            String versionInfo = String.format("MisfitSDK-%s, Demo-%s",
+            String versionInfo = String.format("SyncSDK-%s, SyncDemo-%s",
                     Version.getVersionName(),
                     BuildConfig.VERSION_NAME);
             Toast.makeText(this, versionInfo, Toast.LENGTH_LONG).show();
@@ -195,16 +219,125 @@ public class SyncActivity extends AppCompatActivity {
                         MFAdapter.getInstance().startScanning(selectedDeviceType, new MFScanCallback() {
                             @Override
                             public void onScanResult(MFDevice device, int rssi) {
-                                Log.i("outside", "found device=" + device.getSerialNumber());
+                                MLog.i("outside", "found device=" + device.getSerialNumber());
                             }
 
                             @Override
                             public void onScanFailed(@MFDefine.ScanFailedReason int reason) {
-                                Log.i("outside", "failed=" + reason);
+                                MLog.i("outside", "failed=" + reason);
                             }
                         });
                     }
                 }).show();
+    }
+
+    @OnClick(R.id.btn_rssi)
+    void readRssi() {
+        if (mDevice != null) {
+            boolean result = mDevice.readRssi(new MFBleCallback() {
+                @Override
+                public void onRssiRead(final int status, final int rssi) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            log(String.format(Locale.US, "status=%d, rssi=%d", status, rssi));
+                        }
+                    });
+                }
+            });
+
+            if (!result) {
+                Toast.makeText(this, "ReadRssi return false", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "No device instance exist", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @OnClick(R.id.btn_alarm)
+    void setSingleAlarm() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_single_alarm, null);
+        final RangePreference hour = (RangePreference) view.findViewById(R.id.prf_hour);
+        final RangePreference min = (RangePreference) view.findViewById(R.id.prf_min);
+        final RangePreference repeat = (RangePreference) view.findViewById(R.id.prf_repeat);
+        final MFAlarmSettings.RepeatType[] repeatTypes = new MFAlarmSettings.RepeatType[]{
+                MFAlarmSettings.RepeatType.NEVER,
+                MFAlarmSettings.RepeatType.DAILY
+        };
+        String[] repeatStrings = new String[repeatTypes.length];
+        for (int i = 0; i < repeatTypes.length; i++) {
+            repeatStrings[i] = repeatTypes[i].name();
+        }
+        repeat.setValues(repeatStrings);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Set single alarm")
+                .setView(view)
+                .setPositiveButton("Set", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int timeInSec = hour.getValue() * 60 * 60 + min.getValue() * 60;
+                        MFAlarmSettings alarmSettings = new MFAlarmSettings(timeInSec, repeatTypes[repeat.getValue()]);
+                        mDevice.setSingleAlarm(alarmSettings, new OperationCallback("Set single alarm"));
+                        dialog.dismiss();
+                    }
+                })
+                .setNeutralButton("Clear", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mDevice.clearAllAlarms(new OperationCallback("Clear alarms"));
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+    }
+
+    @OnClick(R.id.btn_inactivity_nudge)
+    void setInactivityNudge() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_inactivity_nudge, null);
+        final RangePreference startHour = (RangePreference) view.findViewById(R.id.prf_nudge_start_hour);
+        final RangePreference startMin = (RangePreference) view.findViewById(R.id.prf_nudge_start_min);
+        final RangePreference endHour = (RangePreference) view.findViewById(R.id.prf_nudge_end_hour);
+        final RangePreference endMin = (RangePreference) view.findViewById(R.id.prf_nudge_end_min);
+        final RangePreference repeat = (RangePreference) view.findViewById(R.id.prf_nudge_repeat_min);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Set inactivity nudge")
+                .setView(view)
+                .setPositiveButton("Enable", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MFInactivityNudgeSettings settings = new MFInactivityNudgeSettings(true,
+                                startHour.getValue(),
+                                startMin.getValue(),
+                                endHour.getValue(),
+                                endMin.getValue(),
+                                repeat.getValue());
+                        mDevice.setInactivityNudge(settings, new OperationCallback("Enable inactivity nudge"));
+                        dialog.dismiss();
+                    }
+                })
+                .setNeutralButton("Disable", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MFInactivityNudgeSettings settings = new MFInactivityNudgeSettings(false, 0, 0, 0, 0, 0);
+                        mDevice.setInactivityNudge(settings, new OperationCallback("Disable inactivity nudge"));
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
     }
 
     @OnClick(R.id.btn_stop_scan)
@@ -241,15 +374,6 @@ public class SyncActivity extends AppCompatActivity {
                 }).show();
     }
 
-    @OnClick(R.id.btn_write_setting)
-    void writeSettings() {
-        String serialNumber = "";
-        if (mDevice != null) {
-            serialNumber = mDevice.getSerialNumber();
-        }
-        startActivity(SettingsActivity.getOpenIntent(this, serialNumber));
-    }
-
     @OnClick(R.id.btn_by_serial)
     void getBySerialNumber() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null, false);
@@ -273,20 +397,18 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_get_config)
     void getConfig() {
-        if (mDevice != null) {
-            setSyncPanelEnabled(false);
-            mDevice.getDeviceInfo(new MFGetCallback<MFDeviceInfo>() {
-                @Override
-                public void onGet(final MFDeviceInfo data) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            log(mGson.toJson(data));
-                        }
-                    });
-                }
-            }, new OperationCallback("getConfig"));
-        }
+        setSyncPanelEnabled(false);
+        mDevice.getDeviceInfo(new MFGetCallback<MFDeviceInfo>() {
+            @Override
+            public void onGet(final MFDeviceInfo data) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        log(Printer.getDeviceInfoText(data));
+                    }
+                });
+            }
+        }, new OperationCallback("getConfig"));
     }
 
     @OnClick(R.id.btn_set_goal)
@@ -313,52 +435,36 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_stop_animation)
     void stopAnimation() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.STOP_ANIMATION)) {
-            mDevice.stopAnimation(new OperationCallback("stopAnimation"));
-        }
+        mDevice.stopAnimation(new OperationCallback("stopAnimation"));
     }
 
     @OnClick(R.id.btn_play_call)
     void playCall() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
-            mDevice.playCallNotification(new OperationCallback("playCallNotification"));
-        }
+        mDevice.playCallNotification(new OperationCallback("playCallNotification"));
     }
 
     @OnClick(R.id.btn_play_text)
     void playText() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.CALL_TEXT_NOTIFICATION)) {
-            mDevice.playTextNotification(new OperationCallback("playTextNotification"));
-        }
+        mDevice.playTextNotification(new OperationCallback("playTextNotification"));
     }
 
     @OnClick(R.id.btn_hid_connect)
     void hidConnect() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.HID)) {
-            mDevice.connectHid(mHidCallback, new OperationCallback("hidConnect"));
-        }
+        mDevice.connectHid(mHidCallback, new OperationCallback("hidConnect"));
     }
 
     @OnClick(R.id.btn_hid_disconnect)
     void hidDisConnect() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.HID)) {
-            mDevice.disconnectHid(null);
-        }
+        mDevice.disconnectHid(null);
     }
 
     @OnClick(R.id.btn_map_button)
     void mapButton() {
-        if (mDevice == null || !mDevice.hasFeature(SupportedFeature.MAP_BUTTON)) {
-            Toast.makeText(this, "Not supported yet", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
         if (mDevice.getDeviceType() == MFDeviceType.SHINE2) {
             mapButton(mShine2Gesture);
         } else if (mDevice.getDeviceType() == MFDeviceType.RAY) {
             mapButton(mRayGesture);
-        } else {
-            Toast.makeText(this, "Not supported yet", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -388,41 +494,36 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_map_activity_tagging)
     void mapActivityTagging() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.MAP_ACTIVITY_TAGGING)) {
-            setSyncPanelEnabled(false);
-            mDevice.mapActivityTagging(new OperationCallback("mapActivityTagging"));
-        }
+        setSyncPanelEnabled(false);
+        mDevice.mapActivityTagging(new OperationCallback("mapActivityTagging"));
     }
 
     @OnClick(R.id.btn_get_mapping)
     void getMappingType() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.GET_MAPPING_TYPE)) {
-            setSyncPanelEnabled(false);
-            mDevice.getMappingType(new MFGetCallback<MFMappingType>() {
-                @Override
-                public void onGet(final MFMappingType data) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            log("Mapping type:" + data);
-                        }
-                    });
-                }
-            }, new OperationCallback("getMappingType"));
-        }
+        setSyncPanelEnabled(false);
+        mDevice.getMappingType(new MFGetCallback<MFMappingType>() {
+            @Override
+            public void onGet(final MFMappingType data) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        log("Mapping type:" + data);
+                    }
+                });
+            }
+        }, new OperationCallback("getMappingType"));
     }
 
     @OnClick(R.id.btn_unmap_all)
     void unmapAll() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.UNMAP_ALL)) {
-            setSyncPanelEnabled(false);
-            mDevice.unmapAll(new OperationCallback("unmapAll"));
-        }
+        setSyncPanelEnabled(false);
+        mDevice.unmapAll(new OperationCallback("unmapAll"));
     }
 
     @OnClick(R.id.btn_sync)
     void sync() {
         MFSyncParams syncParams = createSyncParams();
+        setSyncPanelEnabled(false);
         mDevice.startSync(syncParams,
                 new OperationCallback("sync"),
                 new MFGetCallback<MFDeviceInfo>() {
@@ -431,7 +532,76 @@ public class SyncActivity extends AppCompatActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                log(mGson.toJson(data));
+                                log(Printer.getDeviceInfoText(data));
+                            }
+                        });
+                    }
+                }, new MFDataCallback() {
+                    @Override
+                    public void onActivitySessionGroupSynced(MFActivitySessionGroup activitySessionGroup) {
+                        log(Printer.getActivitySessionText(activitySessionGroup.getActivitySessions()));
+                        log(Printer.getGapSessionText(activitySessionGroup.getGapSessions()));
+                    }
+
+                    @Override
+                    public void onSleepSessionSynced(List<MFSleepSession> MFSleepSessions) {
+                        log(Printer.getSleepSessionText(MFSleepSessions));
+                    }
+
+                    @Override
+                    public void onGraphItemSynced(List<MFGraphItem> MFGraphItems) {
+                        log(Printer.getGraphItemText(MFGraphItems));
+                    }
+                }, new MFOtaCallback() {
+                    @Override
+                    public void onEnter() {
+                        log("ota enter");
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        log("ota completed");
+                    }
+
+                    @Override
+                    public void onProgress(float v) {
+                        log("ota progress=" + v);
+                    }
+                });
+    }
+
+    @OnClick(R.id.btn_debug_sync)
+    void debugSync() {
+        new AlertDialog.Builder(this)
+                .setTitle("WARMING")
+                .setMessage("This operation is only for debugging. Using this operation in your production version may lead to serious problem.")
+                .setPositiveButton("I understand", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        startDebugSync();
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+    }
+
+    private void startDebugSync() {
+        MFSyncParams syncParams = createSyncParams();
+        mDevice.debugSync(syncParams,
+                new OperationCallback("debug sync"),
+                new MFGetCallback<MFDeviceInfo>() {
+                    @Override
+                    public void onGet(final MFDeviceInfo data) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                log(Printer.getDeviceInfoText(data));
                             }
                         });
                     }
@@ -472,9 +642,7 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_play_animation)
     void playAnimation() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.PLAY_ANIMATION)) {
-            mDevice.playAnimation(new OperationCallback("playAnimation"));
-        }
+        mDevice.playAnimation(new OperationCallback("playAnimation"));
     }
 
     @OnClick(R.id.btn_stop)
@@ -485,49 +653,49 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_start_listen_gesture)
     void startListenGesture() {
-        if (mDevice != null && mDevice.hasFeature(SupportedFeature.LISTEN_GESTURE)) {
-            mDevice.startListenGesture(new MFGestureCallback() {
-                @Override
-                public void onReady() {
-                    log("gesture is ready for receiving. ");
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            setSyncPanelEnabled(false);
-                            mBtnStopListenGesture.setEnabled(true);
-                        }
-                    });
-                }
+        mDevice.startListenGesture(
+                new MFGestureCallback() {
+                    @Override
+                    public void onGestureReceived(MFGesture gesture) {
+                        log("receive gesture:" + gesture.name());
+                    }
 
-                @Override
-                public void onGestureReceived(MFGesture gesture) {
-                    log("gesture is " + gesture.name());
-                }
-
-                @Override
-                public void onStopped() {
-                    log("gesture is stopped. ");
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            setSyncPanelEnabled(true);
-                        }
-                    });
-                }
-
-                @Override
-                public void onHeartbeatReceived() {
-                    log("gesture's heart beat is received. ");
-                }
-            }, new OperationCallback("startListenGesture"));
-        }
+                    @Override
+                    public void onHeartbeatReceived() {
+                        log("receive heart beat");
+                    }
+                },
+                new OperationCallback("startListenGesture") {
+                    @Override
+                    public void onSucceed() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                String msg = getOperationName() + " finished";
+                                log(msg);
+                                setSyncPanelEnabled(false);
+                                mBtnStopListenGesture.setEnabled(true);
+                            }
+                        });
+                    }
+                });
     }
 
     @OnClick(R.id.btn_stop_listen_gesture)
     void stopListenGesture() {
-        if (mDevice != null) {
-            mDevice.stopListenGesture(new OperationCallback("stopListenGesture"));
-        }
+        mDevice.stopListenGesture(new OperationCallback("stopListenGesture") {
+            @Override
+            public void onFailed(final int reason) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String msg = String.format(getOperationName() + " failed, reason = %d", reason);
+                        log(msg);
+                        setSyncPanelEnabled(false);
+                    }
+                });
+            }
+        });
     }
 
     @Override
@@ -550,7 +718,6 @@ public class SyncActivity extends AppCompatActivity {
         mDevice = MFAdapter.getInstance().getDevice(serialNumber);
         mTextSerialNumber.setText(serialNumber);
         mTextDeviceName.setText(MFDeviceType.getDeviceTypeText(serialNumber));
-        mSwitchTaggingResponse.setVisibility(MFDeviceType.getDeviceType(serialNumber) == MFDeviceType.FLASH ? View.VISIBLE : View.GONE);
     }
 
     private void setSyncPanelEnabled(boolean enabled) {
@@ -560,8 +727,7 @@ public class SyncActivity extends AppCompatActivity {
     }
 
     private MFSyncParams createSyncParams() {
-        MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale(),
-                mSwitchActivate.isChecked());
+        MFSyncParams MFSyncParams = new MFSyncParams(DataSource.getDefaultMale());
         MFSyncParams.lastGraphItem = DataSource.getFakeGraphItem();
 
         return MFSyncParams;
@@ -571,14 +737,30 @@ public class SyncActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, msg);
-                mLogTv.append(msg + "\n");
+                Log.i(TAG, msg);
+                mLogBuffer.append(msg)
+                        .append("\n");
+                if (mLogBuffer.length() > 4000) {
+                    mLogBuffer.delete(0, mLogBuffer.length() - 4000);
+                }
+                if (mLogDialog != null && mLogDialog.isShowing()) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mLogDialog.setMessage(mLogBuffer.toString());
+                        }
+                    });
+                }
             }
         });
     }
 
     private class OperationCallback implements MFOperationResultCallback {
         private String operationName;
+
+        public String getOperationName() {
+            return operationName;
+        }
 
         public OperationCallback(String operationName) {
             this.operationName = operationName;

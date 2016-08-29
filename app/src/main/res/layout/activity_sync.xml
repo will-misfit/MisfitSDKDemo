@@ -50,7 +50,7 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="200dp">
+        android:layout_height="match_parent">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -59,168 +59,200 @@
             android:paddingLeft="4dp"
             android:paddingRight="4dp">
 
-            <org.houxg.flexlayout.FlexLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="4dp">
-
-                <Button
-                    android:id="@+id/btn_stop"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="stop" />
-
-                <Button
-                    android:id="@+id/btn_play_animation"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="animation" />
-
-                <Button
-                    android:id="@+id/btn_set_goal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Set goal" />
-
-                <Button
-                    android:id="@+id/btn_stop_animation"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="stop animation" />
-
-                <Button
-                    android:id="@+id/btn_sync"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="sync" />
-
-                <Button
-                    android:id="@+id/btn_play_call"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="call" />
-
-                <Button
-                    android:id="@+id/btn_play_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="text" />
-
-                <Button
-                    android:id="@+id/btn_get_config"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Config" />
-
-                <Button
-                    android:id="@+id/btn_hid_connect"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="HID connect" />
-
-                <Button
-                    android:id="@+id/btn_hid_disconnect"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="HID disconnect" />
-
-                <Button
-                    android:id="@+id/btn_map_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Map button" />
-
-                <Button
-                    android:id="@+id/btn_map_activity_tagging"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Map activity tagging" />
-
-                <Button
-                    android:id="@+id/btn_unmap_all"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Unmap all" />
-
-                <Button
-                    android:id="@+id/btn_get_mapping"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="get Mapping Type" />
-
-                <Button
-                    android:id="@+id/btn_write_setting"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="write setting" />
-
-                <Button
-                    android:id="@+id/btn_start_scan"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="start scan" />
-
-                <Button
-                    android:id="@+id/btn_stop_scan"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="stop scan" />
-
-                <Button
-                    android:id="@+id/btn_start_listen_gesture"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="start Listen Gesture"/>
-
-                <Button
-                    android:id="@+id/btn_stop_listen_gesture"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Stop Listen Gesture"/>
-            </org.houxg.flexlayout.FlexLayout>
-
-            <View
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="4dp"
-                android:layout_marginTop="4dp"
-                android:background="@color/divider" />
-
-            <org.houxg.flexlayout.FlexLayout
-                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp">
+                android:orientation="vertical">
 
-                <Switch
-                    android:id="@+id/switch_activate"
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="activate" />
+                    android:text="Basic"
+                    android:textSize="16sp" />
 
-                <Switch
-                    android:id="@+id/switch_tagging_response"
+                <org.houxg.flexlayout.FlexLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="sync while taggingIn" />
-            </org.houxg.flexlayout.FlexLayout>
+                    android:padding="4dp">
+
+                    <Button
+                        android:id="@+id/btn_stop"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="stop" />
+
+                    <Button
+                        android:id="@+id/btn_rssi"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="rssi" />
+
+                    <Button
+                        android:id="@+id/btn_start_scan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="start scan" />
+
+                    <Button
+                        android:id="@+id/btn_stop_scan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="stop scan" />
+
+                    <Button
+                        android:id="@+id/btn_get_config"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Config" />
+
+                    <Button
+                        android:id="@+id/btn_play_animation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="animation" />
+
+                    <Button
+                        android:id="@+id/btn_sync"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="sync" />
+
+                    <Button
+                        android:id="@+id/btn_debug_sync"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="debug sync" />
+
+                    <Button
+                        android:id="@+id/btn_set_goal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Set goal" />
+
+                    <Button
+                        android:id="@+id/btn_stop_animation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="stop animation" />
+
+                </org.houxg.flexlayout.FlexLayout>
+
+                <include layout="@layout/divider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Features"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="General" />
+
+                <org.houxg.flexlayout.FlexLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="4dp">
+
+                    <Button
+                        android:id="@+id/btn_alarm"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="alarm" />
+
+                    <Button
+                        android:id="@+id/btn_inactivity_nudge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Inactivity nudge" />
+
+                    <Button
+                        android:id="@+id/btn_play_call"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="call" />
+
+                    <Button
+                        android:id="@+id/btn_play_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="text" />
+
+                </org.houxg.flexlayout.FlexLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Standard gesture" />
+
+                <org.houxg.flexlayout.FlexLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="4dp">
+
+                    <Button
+                        android:id="@+id/btn_get_mapping"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="get Mapping Type" />
+
+                    <Button
+                        android:id="@+id/btn_map_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Map button" />
+
+                    <Button
+                        android:id="@+id/btn_map_activity_tagging"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Map activity tagging" />
+
+                    <Button
+                        android:id="@+id/btn_unmap_all"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Unmap all" />
+
+                    <Button
+                        android:id="@+id/btn_hid_connect"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HID connect" />
+
+                    <Button
+                        android:id="@+id/btn_hid_disconnect"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HID disconnect" />
+
+                </org.houxg.flexlayout.FlexLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Custom gesture" />
+
+                <org.houxg.flexlayout.FlexLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="4dp">
+
+                    <Button
+                        android:id="@+id/btn_start_listen_gesture"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="start Listen Gesture" />
+
+                    <Button
+                        android:id="@+id/btn_stop_listen_gesture"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stop Listen Gesture" />
+                </org.houxg.flexlayout.FlexLayout>
+
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginBottom="4dp"
-        android:layout_marginTop="4dp"
-        android:background="@color/divider" />
-
-    <TextView
-        android:id="@+id/tv_log"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="4dp"
-        android:textSize="12sp" />
-
 </LinearLayout>
