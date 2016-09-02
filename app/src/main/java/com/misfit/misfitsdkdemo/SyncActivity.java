@@ -22,12 +22,12 @@ import com.misfit.misfitsdk.MFAdapter;
 import com.misfit.misfitsdk.Version;
 import com.misfit.misfitsdk.callback.MFBleCallback;
 import com.misfit.misfitsdk.callback.MFDataCallback;
-import com.misfit.misfitsdk.callback.MFGestureCallback;
 import com.misfit.misfitsdk.callback.MFGetCallback;
 import com.misfit.misfitsdk.callback.MFHIdConnectionCallback;
 import com.misfit.misfitsdk.callback.MFOperationResultCallback;
 import com.misfit.misfitsdk.callback.MFOtaCallback;
 import com.misfit.misfitsdk.callback.MFScanCallback;
+import com.misfit.misfitsdk.callback.MFStreamingCallback;
 import com.misfit.misfitsdk.device.MFDevice;
 import com.misfit.misfitsdk.enums.MFDefine;
 import com.misfit.misfitsdk.enums.MFDeviceType;
@@ -249,6 +249,26 @@ public class SyncActivity extends AppCompatActivity {
             if (!result) {
                 Toast.makeText(this, "ReadRssi return false", Toast.LENGTH_SHORT).show();
             }
+        } else {
+            Toast.makeText(this, "No device instance exist", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @OnClick(R.id.btn_is_busy)
+    void isBusy() {
+        if (mDevice != null) {
+            boolean result = mDevice.isBusy();
+            log(String.format(Locale.US, "isBusy=%s", result));
+        } else {
+            Toast.makeText(this, "No device instance exist", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @OnClick(R.id.btn_is_streaming)
+    void isStreaming() {
+        if (mDevice != null) {
+            boolean result = mDevice.isStreaming();
+            log(String.format(Locale.US, "isStreaming=%s", result));
         } else {
             Toast.makeText(this, "No device instance exist", Toast.LENGTH_SHORT).show();
         }
@@ -653,8 +673,8 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_start_listen_gesture)
     void startListenGesture() {
-        mDevice.startListenGesture(
-                new MFGestureCallback() {
+        mDevice.startStreaming(
+                new MFStreamingCallback() {
                     @Override
                     public void onGestureReceived(MFGesture gesture) {
                         log("receive gesture:" + gesture.name());
@@ -683,7 +703,7 @@ public class SyncActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_stop_listen_gesture)
     void stopListenGesture() {
-        mDevice.stopListenGesture(new OperationCallback("stopListenGesture") {
+        mDevice.stopStreaming(new OperationCallback("stopListenGesture") {
             @Override
             public void onFailed(final int reason) {
                 runOnUiThread(new Runnable() {

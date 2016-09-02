@@ -76,6 +76,18 @@
                     android:padding="4dp">
 
                     <Button
+                        android:id="@+id/btn_is_busy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="is busy" />
+
+                    <Button
+                        android:id="@+id/btn_is_streaming"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="is streaming" />
+
+                    <Button
                         android:id="@+id/btn_stop"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
