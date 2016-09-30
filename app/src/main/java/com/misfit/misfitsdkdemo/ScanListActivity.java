@@ -84,7 +84,7 @@ public class ScanListActivity extends AppCompatActivity implements MFScanCallbac
     }
 
     @Override
-    public void onScanFailed(@MFDefine.ScanFailedReason final int reason) {
+    public void onScanFailed(final int reason) {
         mMainHandler.post(new Runnable() {
             @Override
             public void run() {

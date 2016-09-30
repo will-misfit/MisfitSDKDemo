@@ -223,7 +223,7 @@ public class SyncActivity extends AppCompatActivity {
                             }
 
                             @Override
-                            public void onScanFailed(@MFDefine.ScanFailedReason int reason) {
+                            public void onScanFailed(int reason) {
                                 MLog.i("outside", "failed=" + reason);
                             }
                         });
